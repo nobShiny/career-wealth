@@ -2950,9 +2950,331 @@ XML实现rotate
 图中红、黄、绿三个颜色分别代表measure 、layout、draw的绘制速度，红色相对其他两个状态来说速度是最慢的，绿色最佳。根据工具给出的线框图可以一定程度上优化layout的布局层次，从而减少不必要的布局，起到优化界面渲染速度的效果。
 
 ----------
+2016-06-01 09:54:17 
+
+### 使用SharedPreference需要注意的地方 ###
+#### commit()和apply()的区别 ####
+	返回值区别：apply()没有返回值，而commit()返回boolean表明修改是否提交成功。
+
+	操作效率区别：apply()是将修改数据原子提交到内存, 而后异步真正提交到硬件磁盘,而commit()是同步的提交到硬件磁盘。
+
+	使用场景：如果对提交的结果不关心的话，建议使用apply()，如果需要确保提交成功且有后续操作的话，还是需要用commit()。
+
+### 隐式Intent的使用场景 ###
+
+1. 启动闹钟：
+
+	public void createAlarm(String message, int hour, int minutes) {
+	    Intent intent = new Intent(AlarmClock.ACTION_SET_ALARM)
+	            .putExtra(AlarmClock.EXTRA_MESSAGE, message)
+	            .putExtra(AlarmClock.EXTRA_HOUR, hour)
+	            .putExtra(AlarmClock.EXTRA_MINUTES, minutes);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivity(intent);
+	    }
+	}
+
+	参数说明：
+
+		- EXTRA_HOUR：设定小时
+		 
+		- EXTRA_MINUTES：设定分钟
+		 
+		- EXTRA_MESSAGE：设定自定义消息
+		 
+		- EXTRA_DAYS：设定每周的周几重复响铃。该字段的值应定义成ArrayList，每个元素是Calendar类中的静态字段（如Calendar.Monday）。对于那些一次性响铃，无需设置这个extra。
+		 
+		- EXTRA_RINGTONE：设定闹钟铃声。该字段的值应设定成一个scheme为 content: 的URI类型，该URI指向了一个音频文件的地址；您也可以将值设定为 VALUE_RINGTONE_SILENT，这表示将闹钟设为静音。
+		 
+		- EXTRA_VIBRATE：设定是否响铃的同时震动。该字段的值为boolean类型。
+		 
+		- EXTRA_SKIP_UI：设定启动系统闹钟应用程序时，是否跳过UI界面，值为boolean类型，若为true，表示不显示设定闹钟的dialog对话框，而直接进入设置闹钟的activity。
+
+	闹钟权限：<uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+
+	intent-filter配置：
+	<activity ...>
+	    <intent-filter>
+	        <action android:name="android.intent.action.SET_ALARM" />
+	        <category android:name="android.intent.category.DEFAULT" />
+	    </intent-filter>
+	</activity>
+
+
+2. 启动计时器（适用于Android4.4以上）
+	
+	public void startTimer(String message, int seconds) {
+	    Intent intent = new Intent(AlarmClock.ACTION_SET_TIMER)
+	            .putExtra(AlarmClock.EXTRA_MESSAGE, message)
+	            .putExtra(AlarmClock.EXTRA_LENGTH, seconds)
+	            .putExtra(AlarmClock.EXTRA_SKIP_UI, true);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivity(intent);
+	    }
+	}
+
+	参数说明：
+
+		- EXTRA_LENGTH：设置倒计时的秒数
+		- 
+		- EXTRA_MESSAGE：设置到时消息
+		- 
+		- EXTRA_SKIP_UI：设定启动系统计时器应用程序时，是否跳过UI界面，值为boolean类型，若为true，表示不显示设定计时器的设置dialog对话框，而直接进入计时器的activity。
+
+	权限设置：<uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+	
+	intent-filter配置：
+	<activity ...>
+	    <intent-filter>
+	        <action android:name="android.intent.action.SET_TIMER" />
+	        <category android:name="android.intent.category.DEFAULT" />
+	    </intent-filter>
+	</activity>
+
+3. 相机
+
+	static final int REQUEST_IMAGE_CAPTURE = 1;
+	static final Uri mLocationForPhotos;
+	
+	public void capturePhoto(String targetFilename) {
+	    Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+	    intent.putExtra(MediaStore.EXTRA_OUTPUT,
+	            Uri.withAppendedPath(mLocationForPhotos, targetFilename));
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivityForResult(intent, REQUEST_IMAGE_CAPTURE);
+	    }
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+	    if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+	        Bitmap thumbnail = data.getParcelable("data");
+	        // Do other work with full size photo saved in mLocationForPhotos
+	        ...
+	    }
+	}
+
+	intent-filter配置：
+	<activity ...>
+	    <intent-filter>
+	        <action android:name="android.media.action.IMAGE_CAPTURE" />
+	        <category android:name="android.intent.category.DEFAULT" />
+	    </intent-filter>
+	</activity>
+
+4. 通讯录类别（如果只是通过Contacts Provider读取联系人信息，则无需申请READ_CONTACTS权限。）
+
+#### 选择联系人 ####
+	static final int REQUEST_SELECT_CONTACT = 1;
+
+	public void selectContact() {
+	    Intent intent = new Intent(Intent.ACTION_PICK);
+	    intent.setType(ContactsContract.Contacts.CONTENT_TYPE);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivityForResult(intent, REQUEST_SELECT_CONTACT);
+	    }
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+	    if (requestCode == REQUEST_SELECT_CONTACT && resultCode == RESULT_OK) {
+	        Uri contactUri = data.getData();
+	        // Do something with the selected contact at contactUri
+	        ...
+	    }
+	}
+	
+#### 获得具体联系人信息 ####
+
+	static final int REQUEST_SELECT_PHONE_NUMBER = 1;
+	
+	public void selectContact() {
+	    // Start an activity for the user to pick a phone number from contacts
+	    Intent intent = new Intent(Intent.ACTION_PICK);
+	    intent.setType(CommonDataKinds.Phone.CONTENT_TYPE);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivityForResult(intent, REQUEST_SELECT_PHONE_NUMBER);
+	    }
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+	    if (requestCode == REQUEST_SELECT_PHONE_NUMBER && resultCode == RESULT_OK) {
+	        // Get the URI and query the content provider for the phone number
+	        Uri contactUri = data.getData();
+	        String[] projection = new String[]{CommonDataKinds.Phone.NUMBER};
+	        Cursor cursor = getContentResolver().query(contactUri, projection,
+	                null, null, null);
+	        // If the cursor returned is valid, get the phone number
+	        if (cursor != null && cursor.moveToFirst()) {
+	            int numberIndex = cursor.getColumnIndex(CommonDataKinds.Phone.NUMBER);
+	            String number = cursor.getString(numberIndex);
+	            // Do something with the phone number
+	            ...
+	        }
+	    }
+	}
+
+	参数：
+
+		- CommonDataKinds.Phone.CONTENT_TYPE，表示获取联系人号码
+		- 
+		- CommonDataKinds.Email.CONTENT_TYPE，表示获取联系人Email
+		- 
+		- CommonDataKinds.StructuredPostal.CONTENT_TYPE，表示获取联系人的邮寄地址
+		- 
+		- 通过ContactsContract.CommonDataKinds中的其他字段，还可以获取更多联系人信息。
+
+#### 查看联系人 ####
+
+	public void viewContact(Uri contactUri) {
+	    Intent intent = new Intent(Intent.ACTION_VIEW, contactUri);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivity(intent);
+	    }
+	}
+
+	参数：
+		Action：ACTION_VIEW
+		
+		Data URI Scheme：content:<URI>，该Uri指向了查看的联系人地址，有两种方法可获得该Uri：
+		
+		通过上一小节的ACTION_PICK，获得返回的Uri。此方式无需申请权限。
+		直接检索通讯录联系人（ Retrieving a List of Contacts）。此方式需要READ_CONTACTS权限。
+		
+		MIME Type：空
+
+#### 编辑联系人信息 ####
+
+	public void editContact(Uri contactUri, String email) {
+	    Intent intent = new Intent(Intent.ACTION_EDIT);
+	    intent.setData(contactUri);
+	    intent.putExtra(Intents.Insert.EMAIL, email);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivity(intent);
+	    }
+	}
+
+	参数:
+
+	Action：ACTION_EDIT
+
+	Data URI Scheme：content:<URI>，获取该Uri的方式和权限与上一小节的获取方式一致。
+	
+	MIME Type：由Uri决定。
+	
+	Extras：ContactsContract.Intents.Insert
+
+
+#### 新增联系人 ####
+
+	public void insertContact(String name, String email) {
+	    Intent intent = new Intent(Intent.ACTION_INSERT);
+	    intent.setType(Contacts.CONTENT_TYPE);
+	    intent.putExtra(Intents.Insert.NAME, name);
+	    intent.putExtra(Intents.Insert.EMAIL, email);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivity(intent);
+	    }
+	}
+
+5. 拨打电话
+
+
+	public void dialPhoneNumber(String phoneNumber) {
+	    Intent intent = new Intent(Intent.ACTION_DIAL);
+	    intent.setData(Uri.parse("tel:" + phoneNumber));
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivity(intent);
+	    }
+	}
+
+	需要权限：
+	<uses-permission android:name="android.permission.CALL_PHONE" />
+
+6. 打开某个设置选项
+
+	public void openWifiSettings() {
+	    Intent intent = new Intent(Intent.ACTION_WIFI_SETTINGS);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivity(intent);
+	    }
+	}
+
+	参数说明：
+
+	Action：
+
+		ACTION_SETTINGS
+		
+		ACTION_WIRELESS_SETTINGS
+		
+		ACTION_AIRPLANE_MODE_SETTINGS
+		
+		ACTION_WIFI_SETTINGS
+		
+		ACTION_APN_SETTINGS
+		
+		ACTION_BLUETOOTH_SETTINGS
+		
+		ACTION_DATE_SETTINGS
+		
+		ACTION_LOCALE_SETTINGS
+		
+		ACTION_INPUT_METHOD_SETTINGS
+		
+		ACTION_DISPLAY_SETTINGS
+		
+		ACTION_SECURITY_SETTINGS
+		
+		ACTION_LOCATION_SOURCE_SETTINGS
+		
+		ACTION_INTERNAL_STORAGE_SETTINGS
+		
+		ACTION_MEMORY_CARD_SETTINGS
+
+7. 打开网页
+
+	public void openWebPage(String url) {
+	    Uri webpage = Uri.parse(url);
+	    Intent intent = new Intent(Intent.ACTION_VIEW, webpage);
+	    if (intent.resolveActivity(getPackageManager()) != null) {
+	        startActivity(intent);
+	    }
+	}
+
+	intent-filter：
+
+	<activity ...>
+	    <intent-filter>
+	        <action android:name="android.intent.action.VIEW" />
+	        <!-- Include the host attribute if you want your app to respond
+	             only to URLs with your app's domain. -->
+	        <data android:scheme="http" android:host="www.example.com" />
+	        <category android:name="android.intent.category.DEFAULT" />
+	        <!-- The BROWSABLE category is required to get links from web pages. -->
+	        <category android:name="android.intent.category.BROWSABLE" />
+	    </intent-filter>
+	</activity>
+
+
+参考地址：[http://blog.csdn.net/vanpersie_9987/article/details/51244558#rd](http://blog.csdn.net/vanpersie_9987/article/details/51244558#rd "隐式intent的强大之处")
+
+
+
+### service需要注意的地方 ###
+
+1.service运行在主线程中，只要进程存在，service就可以存在，对activity的依赖性很小。
+
 
 ----------
 
+
+----------
+
+----------
+
+----------
 
 
 ### 特别篇一：一些经验的分享 ###
