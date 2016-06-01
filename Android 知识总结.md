@@ -3235,27 +3235,27 @@ XML实现rotate
 
 7. 打开网页
 
-	public void openWebPage(String url) {
-	    Uri webpage = Uri.parse(url);
-	    Intent intent = new Intent(Intent.ACTION_VIEW, webpage);
-	    if (intent.resolveActivity(getPackageManager()) != null) {
-	        startActivity(intent);
-	    }
-	}
+		public void openWebPage(String url) {
+		    Uri webpage = Uri.parse(url);
+		    Intent intent = new Intent(Intent.ACTION_VIEW, webpage);
+		    if (intent.resolveActivity(getPackageManager()) != null) {
+		        startActivity(intent);
+		    }
+		}
 
 	intent-filter：
 
-	<activity ...>
-	    <intent-filter>
-	        <action android:name="android.intent.action.VIEW" />
-	        <!-- Include the host attribute if you want your app to respond
-	             only to URLs with your app's domain. -->
-	        <data android:scheme="http" android:host="www.example.com" />
-	        <category android:name="android.intent.category.DEFAULT" />
-	        <!-- The BROWSABLE category is required to get links from web pages. -->
-	        <category android:name="android.intent.category.BROWSABLE" />
-	    </intent-filter>
-	</activity>
+		<activity ...>
+		    <intent-filter>
+		        <action android:name="android.intent.action.VIEW" />
+		        <!-- Include the host attribute if you want your app to respond
+		             only to URLs with your app's domain. -->
+		        <data android:scheme="http" android:host="www.example.com" />
+		        <category android:name="android.intent.category.DEFAULT" />
+		        <!-- The BROWSABLE category is required to get links from web pages. -->
+		        <category android:name="android.intent.category.BROWSABLE" />
+		    </intent-filter>
+		</activity>
 
 
 参考地址：[http://blog.csdn.net/vanpersie_9987/article/details/51244558#rd](http://blog.csdn.net/vanpersie_9987/article/details/51244558#rd "隐式intent的强大之处")
