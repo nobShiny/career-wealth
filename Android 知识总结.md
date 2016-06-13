@@ -3269,7 +3269,6 @@ XML实现rotate
 
 ----------
 
-
 ----------
 
 ----------
@@ -3415,3 +3414,157 @@ XML实现rotate
 	尽可能的简化一个类...
 
 #### No.9：提取继承体系中重复的属性与方法到父类 ####
+
+
+
+----------
+
+
+2016-06-12 14:39:24 
+### 自定义View 主题 ###
+
+#### Configuration类 ####
+
+	Configuration config = getResources().getConfiguration();
+	//获取国家码
+	int countryCode = config.mcc;
+	//获取网络码
+	int networkCode = config.mnc;
+ 	//判断横竖屏
+	if(config.orientation==Configuration.ORIENTATION_PORTRAIT){
+		//竖屏
+	}else{
+		//横屏
+	}
+
+#### ViewConfiguration类 ####
+
+	ViewConfiguration viewConfiguration = ViewConfiguration.get(context);
+
+	//获取touchSlop（最小活动距离，当滑动距离大于这个值时才判定滑动动作）
+	int touchSlop = viewConfiguration.getScaledTouchSlop();
+
+	//获取滑动速度的最小值最大值
+	int minVeloctity = viewConfiguration.getScaledMinimumFlingVelocity();
+	int maxVeloctity = viewConfiguration.getScaledMaximumFlingVelocity();
+
+	//判断物理按键是否存在	
+	boolean isHavePermanentMenuKey = viewConfiguration.hasPermanentMenuKey();
+
+	//双击间隔时间，在该时间内是双击还是单击
+    int doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
+
+	//长按状态需要的时间
+	int longPressTimeout = ViewConfiguration.getLongPressTimeout();
+
+	//重复按键时间
+	int keyRepeatTimeout = ViewConfiguration.getKeyRepeatTimeout();
+
+#### GestureDetector类 (简化touch操作)####
+#### VelocityTracker类 (跟踪触摸事件的速率)####
+#### ViewDragHelper类 （View拖拽相关操作）####
+#### Scroller类 ####
+
+- 	scrollTo()和scrollBy()的关系
+
+	scrollBy()最终调用了scrollTo()，scrollBy()是scrollTo()的封装。
+
+-   scroll的本质
+  
+    scroll只是滑动View的内容。
+
+
+	//	
+    //
+	//
+	//
+
+### MeasureSpec解析 ###
+
+由mode和size组成，表示父View对子View宽高的要求，用一个32位整型数据表示，最高的两位表示mode，剩下的30位表示大小。子view的MeasureSpec是由自己的size和父view的MeasureSpec共同决定的。
+
+
+	//获取mode
+	int specMode = MeasureSpec.getMode(measureSpec);
+	//获取size
+	int specSize = MeasureSpec.getSize(measureSpec);
+	//生成MeasureSpec
+	int meaasureSpec = MeasureSpec.makeMeasureSpex(size,mode);
+
+	三种mode：
+		MeasureSpec.EXACTLY（精确模式） 使用子view的具体值，这个数值为 1<<30  
+		MeasureSpec.AT_MOST  使用父view的具体值（match_parent）,这个数值为 2<<30
+		MeasureSpec.UNSPECIFIED  父容器不对子view做出大小限制。不常用。这个数值为 0<<30
+
+在View类中的getChildMeasureSpec()方法里去确定子view的MeasureSpec。
+![](http://i.imgur.com/XlLgHwt.png)
+
+### onMeasure()源码流程 ###
+
+（1）在onMeasure中调用setMeasuredDimension()设置View的宽高。
+
+（2）在setMeasuredDimension()中调用getDefaultSize()获取View的宽高。
+
+（3）在getDefaultSize()中调用getSuggestedMinimumWidth()或getSuggestedMinimumHight()获取到View的宽高的最小值。
+
+
+##### getSuggestedMinimumWidth()/getSuggestedMinimumHight() #####
+
+return (mBackground == null) ? mMinWidth : max(mMinWidth, mBackground.getMinimumWidth());
+
+根据背景判断，如果背景为空，则返回宽/高的最小值（这个值可以在xml里设置，如果没有设置，默认为0）；
+
+##### getDefaultSize() #####
+
+	public static int getDefaultSize(int size, int measureSpec) {
+        int result = size;
+        int specMode = MeasureSpec.getMode(measureSpec);
+        int specSize = MeasureSpec.getSize(measureSpec);
+
+        switch (specMode) {
+        case MeasureSpec.UNSPECIFIED:
+            result = size;
+            break;
+        case MeasureSpec.AT_MOST:
+        case MeasureSpec.EXACTLY:
+            result = specSize;
+            break;
+        }
+        return result;
+    }
+
+以上过程表明在Measure阶段，view的宽高是由MeasureSpec的size决定。
+
+##### setMeasuredDimension() #####
+
+把获取到的view 的宽高设置到view中。
+
+
+### onLayout()源码流程 ###
+
+setFrame() ----->  确定子view在父view中的位置。
+layout方法是view用与确定自己在它父view的位置。
+ViewGroup的onLayout()是用来确定子view的位置。
+
+问题：getMeasuredWidth()和getWidth()的区别
+答： 在onMeasure()执行完毕后通过getMeasuredWidth()就可以获取到相应的值，而getWidth()想要获取到相应的值必须要在onLayout()后才能获取到。除此之外，两者的计算方式也不一样，getWidth()= 右坐标 - 左坐标
+getMeasuredWidth() = onMeasure()中的setMeasuredDimension（width, height）的相应值。
+
+**onLayout(l,t,r,b)的四个参数所代表的含义：**
+![](http://i.imgur.com/scUs6Xn.png)
+
+
+### onDraw()源码流程 ###
+
+draw的步骤：
+1.绘制bacjground
+
+（2.如果必要的话，保存canvas的状态）
+
+3.绘制view的内容（核心）
+
+4.绘制子view
+
+(5.如果有必要的话，绘制视图滑动时边框的渐变效果）
+
+6.绘制scrollbar
