@@ -3268,6 +3268,35 @@ XML实现rotate
 
 
 ----------
+2016-08-01 10:22:26 
+### ActivityThread管理着什么 ###
+
+![activityThread功能说明](http://mmbiz.qpic.cn/mmbiz_png/v1LbPPWiaSt6oQKdJkbPZlRMPvGpHzv8L7v1JbHMljoGlEOMNJ2Ke8QMP77jgc3M2bqHSUxx77JIhEBu2iaq0j9w/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1)
+
+
+
+----------
+2016-08-09 16:04:04 
+
+### SimpleAdapter作为 ListView的适配器，行布局中支持哪些组件 ###
+
+根据SimpleAdapter的源码可以知道，使用SimpleAdapter作为适配器是，会按照如下顺序判断View:
+ 
+1、该view是否实现checkable接口
+ 
+2、该view是否是TextView
+ 
+3、该view是否是ImageView
+ 
+如果以上三种类型都不是，就会抛出IllegalStateExeception
+
+----------
+2016-08-10 16:50:26 
+### Android里面为什么要设计出Bundle而不是直接用Map结构 ###
+
+- Bundle内部是由ArrayMap实现的，ArrayMap的内部实现是两个数组，一个int数组是存储对象数据对应下标，一个对象数组保存key和value，内部使用二分法对key进行排序，所以在添加、删除、查找数据的时候，都会使用二分法查找，只适合于小数据量操作，如果在数据量比较大的情况下，那么它的性能将退化。而HashMap内部则是数组+链表结构，所以在数据量较少的时候，HashMap的Entry Array比ArrayMap占用更多的内存。因为使用Bundle的场景大多数为小数据量，我没见过在两个Activity之间传递10个以上数据的场景，所以相比之下，在这种情况下使用ArrayMap保存数据，在操作速度和内存占用上都具有优势，因此使用Bundle来传递数据，可以保证更快的速度和更少的内存占用。
+
+- 另外一个原因，则是在Android中如果使用Intent来携带数据的话，需要数据是基本类型或者是可序列化类型，HashMap使用Serializable进行序列化，而Bundle则是使用Parcelable进行序列化。而在Android平台中，更推荐使用Parcelable实现序列化，虽然写法复杂，但是开销更小，所以为了更加快速的进行数据的序列化和反序列化，系统封装了Bundle类，方便我们进行数据的传输。
 
 ----------
 
@@ -3557,7 +3586,7 @@ getMeasuredWidth() = onMeasure()中的setMeasuredDimension（width, height）的
 ### onDraw()源码流程 ###
 
 draw的步骤：
-1.绘制bacjground
+1.绘制background
 
 （2.如果必要的话，保存canvas的状态）
 
